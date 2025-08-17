@@ -3,7 +3,6 @@
 ## Create the Repository
 
 1. **Go to GitHub** and create a new repository:
-
    - Name: `genai-research-assistant`
    - Description: "AI Research Assistant - End-to-End RAG Web App with FastAPI, React, and PostgreSQL"
    - Make it **Public** (good for showcasing to employers)
@@ -114,14 +113,13 @@ A full-stack RAG (Retrieval-Augmented Generation) web application that allows us
 Coming soon...
 
 ## 📁 Project Structure
+
 ```
-
 genai-research-assistant/
-├── backend/ # FastAPI application
-├── frontend/ # React application  
-├── .github/ # CI/CD workflows
+├── backend/          # FastAPI application
+├── frontend/         # React application  
+├── .github/          # CI/CD workflows
 └── docker-compose.yml
-
 ```
 
 ## 🛠️ Development
@@ -148,7 +146,6 @@ git push origin main
 ## Next Steps
 
 After completing this setup:
-
 1. ✅ Repository created with proper structure
 2. ✅ Documentation in place
 3. ✅ Ready for backend development
