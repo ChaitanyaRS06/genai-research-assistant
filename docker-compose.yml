@@ -35,7 +35,9 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/app:/app/app
+      - uploaded_files:/app/uploads
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  uploaded_files:

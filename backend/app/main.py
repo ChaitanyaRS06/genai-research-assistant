@@ -37,3 +37,6 @@ async def health_check():
 # Include authentication routes
 from app.routers import users
 app.include_router(users.router)
+
+from app.routers import documents
+app.include_router(documents.router)
