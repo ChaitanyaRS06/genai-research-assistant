@@ -1,20 +1,37 @@
-# Minimal working version
+# Web Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+
+# Database
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
+alembic==1.12.1
+
+# Vector Database (pgvector)
 pgvector==0.2.4
+
+# Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
+
+# AI/ML - Updated compatible versions
+openai==1.10.0
+langchain==0.1.0
+langchain-openai==0.0.5
+langchain-community==0.0.10
+
+# PDF Processing
+pypdf2==3.0.1
+
+# Environment & Config
 python-dotenv==1.0.0
 pydantic-settings==2.0.3
-
-# AI/ML - Latest compatible versions
-openai>=1.6.1
-langchain>=0.1.0
-langchain-openai>=0.0.5
+email-validator==2.1.0  # Required for EmailStr validation
 
 # Development
 pytest==7.4.3
 httpx==0.25.2
+black==23.10.1
+ruff==0.1.6
+mypy==1.7.1

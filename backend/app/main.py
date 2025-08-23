@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.database import engine
+import app.models  # Import the models module
+
+# Create database tables
+app.models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="GenAI Research Assistant",
@@ -29,8 +34,6 @@ async def health_check():
         "openai_configured": bool(settings.openai_api_key)
     }
 
-# We'll add more routes here as we build them
-# from app.routers import users, docs, chat
-# app.include_router(users.router)
-# app.include_router(docs.router)
-# app.include_router(chat.router)
+# Include authentication routes
+from app.routers import users
+app.include_router(users.router)
