@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str]
     is_active: bool
+    is_admin: bool
     
     class Config:
         from_attributes = True  # Allows SQLAlchemy model conversion
@@ -51,6 +52,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
         return None
     if not verify_password(password, user.hashed_password):
         return None
+        
     return user
 
 def create_user(db: Session, user_data: UserCreate) -> User:
@@ -121,3 +123,21 @@ def get_current_user(
         raise credentials_exception
     
     return user
+
+
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    FastAPI dependency to ensure current user is an admin.
+    
+    Returns:
+        Current user if they are admin
+        
+    Raises:
+        HTTPException: If user is not admin
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user
