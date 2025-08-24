@@ -40,3 +40,6 @@ app.include_router(users.router)
 
 from app.routers import documents
 app.include_router(documents.router)
+
+from app.routers import embeddings
+app.include_router(embeddings.router)
