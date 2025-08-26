@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Agentic RAG Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = '/api';
+
+    function App() {
+      const [tab, setTab] = React.useState("home");
+      const [token, setToken] = React.useState(null);
+      const [response, setResponse] = React.useState(null);
+
+      const callApi = async (endpoint, method="GET", body=null) => {
+        try {
+          const res = await fetch(API_BASE + endpoint, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": "Bearer " + token } : {})
+            },
+            body: body ? JSON.stringify(body) : null
+          });
+          const data = await res.json().catch(() => ({}));
+          setResponse({ ok: res.ok, status: res.status, data });
+        } catch (err) {
+          setResponse({ ok: false, status: 0, data: { error: err.message } });
+        }
+      };
+
+      const login = async () => {
+        const email = prompt("Email?");
+        const password = prompt("Password?");
+        const res = await fetch(API_BASE + "/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (data.access_token) {
+          setToken(data.access_token);
+          alert("Logged in!");
+        } else {
+          alert("Login failed: " + JSON.stringify(data));
+        }
+      };
+
+      const sections = {
+        home: (
+          <div>
+            <h1 class="text-2xl font-bold mb-4">Agentic RAG Dashboard</h1>
+            <p>Welcome! Use the tabs above to interact with backend APIs.</p>
+          </div>
+        ),
+        auth: (
+          <div>
+            <h2 class="text-xl font-semibold mb-2">Authentication</h2>
+            <button onClick={login} class="bg-blue-500 text-white px-3 py-1 rounded mr-2">Login</button>
+            <button onClick={() => callApi("/auth/me")} class="bg-green-500 text-white px-3 py-1 rounded mr-2">/auth/me</button>
+            <button onClick={() => callApi("/auth/protected")} class="bg-purple-500 text-white px-3 py-1 rounded">/auth/protected</button>
+          </div>
+        ),
+        documents: (
+          <div>
+            <h2 class="text-xl font-semibold mb-2">Documents</h2>
+            <button onClick={() => callApi("/documents/")} class="bg-blue-500 text-white px-3 py-1 rounded mr-2">List Docs</button>
+            <button onClick={() => callApi("/documents/upload","POST",{filename:"demo.txt",content:"Hello RAG"})} class="bg-green-500 text-white px-3 py-1 rounded">Upload Dummy</button>
+          </div>
+        ),
+        embeddings: (
+          <div>
+            <h2 class="text-xl font-semibold mb-2">Embeddings</h2>
+            <button onClick={() => callApi("/embeddings/generate-all","POST")} class="bg-blue-500 text-white px-3 py-1 rounded mr-2">Generate All</button>
+            <button onClick={() => callApi("/embeddings/stats")} class="bg-green-500 text-white px-3 py-1 rounded">Stats</button>
+          </div>
+        ),
+        search: (
+          <div>
+            <h2 class="text-xl font-semibold mb-2">Search</h2>
+            <button onClick={() => callApi("/search/stats")} class="bg-blue-500 text-white px-3 py-1 rounded mr-2">Stats</button>
+            <button onClick={() => callApi("/search/debug")} class="bg-green-500 text-white px-3 py-1 rounded mr-2">Debug</button>
+            <button onClick={() => callApi("/search/debug/detailed")} class="bg-purple-500 text-white px-3 py-1 rounded">Debug Detailed</button>
+          </div>
+        ),
+        rag: (
+          <div>
+            <h2 class="text-xl font-semibold mb-2">RAG</h2>
+            <button onClick={() => callApi("/rag/capabilities")} class="bg-blue-500 text-white px-3 py-1 rounded mr-2">Capabilities</button>
+            <button onClick={() => callApi("/rag/health")} class="bg-green-500 text-white px-3 py-1 rounded">Health</button>
+            <button onClick={() => callApi("/rag/ask","POST",{question:"What is RAG?"})} class="bg-purple-500 text-white px-3 py-1 rounded ml-2">Ask</button>
+            <button onClick={() => callApi("/rag/ask-advanced","POST",{question:"Explain hybrid retrieval"})} class="bg-pink-500 text-white px-3 py-1 rounded ml-2">Ask Advanced</button>
+          </div>
+        ),
+        tester: (
+          <ApiTester callApi={callApi} />
+        )
+      };
+
+      return (
+        <div class="p-4">
+          <nav class="flex space-x-4 mb-4">
+            {Object.keys(sections).map(k => (
+              <button key={k} onClick={() => setTab(k)}
+                class={`px-3 py-1 rounded ${tab===k ? "bg-black text-white" : "bg-gray-200"}`}>
+                {k.toUpperCase()}
+              </button>
+            ))}
+          </nav>
+          <div class="bg-white p-4 rounded shadow">{sections[tab]}</div>
+          {response && (
+            <pre class="mt-4 p-2 bg-gray-800 text-green-200 rounded text-sm overflow-x-auto">
+{JSON.stringify(response,null,2)}
+            </pre>
+          )}
+        </div>
+      );
+    }
+
+    function ApiTester({callApi}) {
+      const [endpoint,setEndpoint] = React.useState("/health");
+      const [method,setMethod] = React.useState("GET");
+      const [body,setBody] = React.useState("{}");
+      return (
+        <div>
+          <h2 class="text-xl font-semibold mb-2">API Tester</h2>
+          <input value={endpoint} onChange={e=>setEndpoint(e.target.value)}
+                 class="border p-1 mr-2 w-1/2" placeholder="/endpoint" />
+          <select value={method} onChange={e=>setMethod(e.target.value)} class="border p-1 mr-2">
+            <option>GET</option><option>POST</option><option>DELETE</option>
+          </select>
+          <textarea value={body} onChange={e=>setBody(e.target.value)} class="border p-1 w-full h-24 mt-2"
+                    placeholder='{"key":"value"}'></textarea>
+          <button onClick={()=>callApi(endpoint,method,method==="GET"?null:JSON.parse(body))}
+                  class="bg-blue-600 text-white px-3 py-1 rounded mt-2">Send</button>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

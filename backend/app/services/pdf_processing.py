@@ -1,4 +1,4 @@
-import PyPDF2
+from pypdf import PdfReader as PyPDF2
 from typing import List, Tuple
 from pathlib import Path
 import re

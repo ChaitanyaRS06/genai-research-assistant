@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
+from app.config import settings  # Use your existing settings import
 from app.database import engine
-import app.models  # Import the models module
+import app.models
+
+# Import routers
+from app.routers import users, documents, embeddings, search, rag
 
 # Create database tables
 app.models.Base.metadata.create_all(bind=engine)
@@ -13,10 +16,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware for frontend communication
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # React dev servers
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,16 +33,12 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "environment": settings.app_env,
         "openai_configured": bool(settings.openai_api_key)
     }
 
-# Include authentication routes
-from app.routers import users
+# Include routers
 app.include_router(users.router)
-
-from app.routers import documents
 app.include_router(documents.router)
-
-from app.routers import embeddings
 app.include_router(embeddings.router)
+app.include_router(search.router)
+app.include_router(rag.router)

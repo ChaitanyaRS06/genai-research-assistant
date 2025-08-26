@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   # Database
@@ -37,6 +37,16 @@ services:
       - ./backend/app:/app/app
       - uploaded_files:/app/uploads
     restart: unless-stopped
+
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
 
 volumes:
   postgres_data:
