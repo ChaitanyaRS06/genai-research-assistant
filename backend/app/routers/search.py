@@ -113,46 +113,36 @@ async def get_search_statistics(
     
     stats = search_service.get_search_stats(db, current_user)
     return stats
+class TestQuery(BaseModel):
+    query1: str
+    query2: str
 
 @router.post("/test")
 async def test_search_similarity(
-    query1: str,
-    query2: str,
+    body: TestQuery,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Test endpoint to compare similarity between two queries.
-    
-    Useful for understanding how the semantic search works.
-    """
-    
-    # Generate embeddings for both queries
     from app.services.embeddings import embedding_service
-    
-    embeddings = await embedding_service.generate_embeddings([query1, query2])
+    import numpy as np
+
+    embeddings = await embedding_service.generate_embeddings([body.query1, body.query2])
     if len(embeddings) != 2:
         raise HTTPException(status_code=500, detail="Failed to generate embeddings")
-    
-    # Calculate cosine similarity manually
-    import numpy as np
-    
+
     embedding1 = np.array(embeddings[0])
     embedding2 = np.array(embeddings[1])
-    
-    # Cosine similarity formula
-    dot_product = np.dot(embedding1, embedding2)
-    norm1 = np.linalg.norm(embedding1)
-    norm2 = np.linalg.norm(embedding2)
-    similarity = dot_product / (norm1 * norm2)
-    
+
+    similarity = float(np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2)))
+
     return {
-        "query1": query1,
-        "query2": query2,
-        "cosine_similarity": float(similarity),
-        "similarity_percentage": round(float(similarity) * 100, 2),
+        "query1": body.query1,
+        "query2": body.query2,
+        "cosine_similarity": similarity,
+        "similarity_percentage": round(similarity * 100, 2),
         "interpretation": "high" if similarity > 0.8 else "medium" if similarity > 0.6 else "low"
     }
+
 
 
 @router.get("/debug")
