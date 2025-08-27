@@ -1,8 +1,12 @@
-from pypdf import PdfReader as PyPDF2
+# app/services/pdf_processing.py
+import pypdf  # This matches your requirements.txt
 from typing import List, Tuple
 from pathlib import Path
 import re
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class DocumentChunk:
@@ -39,21 +43,39 @@ class PDFProcessor:
         pages_text = []
         
         try:
+            logger.info(f"Opening PDF file: {file_path}")
+            
             with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
+                # Using pypdf (not PyPDF2) to match your requirements.txt
+                pdf_reader = pypdf.PdfReader(file)
+                
+                logger.info(f"PDF has {len(pdf_reader.pages)} pages")
                 
                 for page_num, page in enumerate(pdf_reader.pages, 1):
-                    text = page.extract_text()
-                    
-                    # Clean up the extracted text
-                    text = self._clean_text(text)
-                    
-                    if text.strip():  # Only add non-empty pages
-                        pages_text.append((text, page_num))
+                    try:
+                        text = page.extract_text()
+                        
+                        # Clean up the extracted text
+                        text = self._clean_text(text)
+                        
+                        if text.strip():  # Only add non-empty pages
+                            pages_text.append((text, page_num))
+                            logger.debug(f"Page {page_num}: extracted {len(text)} characters")
+                        else:
+                            logger.warning(f"Page {page_num}: no extractable text")
+                            
+                    except Exception as page_error:
+                        logger.warning(f"Failed to extract from page {page_num}: {page_error}")
+                        continue
                         
         except Exception as e:
+            logger.error(f"PDF extraction failed: {str(e)}")
             raise ValueError(f"Error reading PDF file: {str(e)}")
         
+        if not pages_text:
+            raise ValueError("No extractable text found in PDF - document may be image-based or corrupted")
+        
+        logger.info(f"Successfully extracted text from {len(pages_text)} pages")
         return pages_text
     
     def _clean_text(self, text: str) -> str:
@@ -66,10 +88,13 @@ class PDFProcessor:
         Returns:
             Cleaned text
         """
+        if not text:
+            return ""
+            
         # Remove excessive whitespace and normalize line breaks
         text = re.sub(r'\s+', ' ', text)
         
-        # Remove common PDF artifacts
+        # Remove common PDF artifacts while preserving punctuation
         text = re.sub(r'[^\w\s\.,!?;:()\-\'"]+', ' ', text)
         
         # Normalize quotes
@@ -91,30 +116,35 @@ class PDFProcessor:
         chunks = []
         chunk_index = 0
         
+        logger.info(f"Creating chunks from {len(pages_text)} pages of text")
+        
         for page_text, page_num in pages_text:
             # If page is smaller than chunk_size, treat it as one chunk
             if len(page_text) <= self.chunk_size:
-                chunks.append(DocumentChunk(
-                    text=page_text,
-                    chunk_index=chunk_index,
-                    page_number=page_num,
-                    char_count=len(page_text)
-                ))
-                chunk_index += 1
+                if len(page_text.strip()) > 50:  # Only include substantial chunks
+                    chunks.append(DocumentChunk(
+                        text=page_text,
+                        chunk_index=chunk_index,
+                        page_number=page_num,
+                        char_count=len(page_text)
+                    ))
+                    chunk_index += 1
                 continue
             
             # Split large pages into overlapping chunks
             page_chunks = self._split_text_with_overlap(page_text, page_num)
             
             for chunk_text in page_chunks:
-                chunks.append(DocumentChunk(
-                    text=chunk_text,
-                    chunk_index=chunk_index,
-                    page_number=page_num,
-                    char_count=len(chunk_text)
-                ))
-                chunk_index += 1
+                if len(chunk_text.strip()) > 50:  # Only include substantial chunks
+                    chunks.append(DocumentChunk(
+                        text=chunk_text,
+                        chunk_index=chunk_index,
+                        page_number=page_num,
+                        char_count=len(chunk_text)
+                    ))
+                    chunk_index += 1
         
+        logger.info(f"Created {len(chunks)} text chunks")
         return chunks
     
     def _split_text_with_overlap(self, text: str, page_num: int) -> List[str]:
@@ -151,8 +181,8 @@ class PDFProcessor:
             # Move start position with overlap
             start = end - self.chunk_overlap
             
-            # Ensure we don't go backwards
-            if start <= 0:
+            # Ensure we don't go backwards or get stuck
+            if start <= 0 or start >= end:
                 start = end
         
         return chunks
@@ -167,6 +197,8 @@ class PDFProcessor:
         Returns:
             List of processed document chunks
         """
+        logger.info(f"Starting PDF processing for: {file_path}")
+        
         # Extract text from PDF
         pages_text = self.extract_text_from_pdf(file_path)
         
@@ -176,6 +208,10 @@ class PDFProcessor:
         # Chunk the text
         chunks = self.chunk_text(pages_text)
         
+        if not chunks:
+            raise ValueError("No valid chunks could be created from the PDF text")
+        
+        logger.info(f"PDF processing complete: {len(chunks)} chunks created")
         return chunks
 
 # Utility function for easy usage
@@ -189,7 +225,7 @@ def process_pdf_file(file_path: Path, chunk_size: int = 1000, chunk_overlap: int
         chunk_overlap: Overlap between chunks in characters
         
     Returns:
-        List of DocumentChunk objects
+        List of TextChunk objects
     """
     processor = PDFProcessor(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return processor.process_pdf(file_path)

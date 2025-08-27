@@ -56,6 +56,9 @@ class LangGraphAgenticWorkflow:
         self.search_service = search_service
         self.web_search_service = web_search_service
         self.client = openai.OpenAI(api_key=settings.openai_api_key)
+        # Store user and db for workflow execution
+        self.current_user = None
+        self.current_db = None
         self.workflow = self._build_workflow()
     
     def _build_workflow(self) -> StateGraph:
@@ -121,7 +124,11 @@ class LangGraphAgenticWorkflow:
         
         workflow_start = datetime.utcnow()
         
-        # Initialize state
+        # Store user and db in instance variables for access in nodes
+        self.current_user = user
+        self.current_db = db
+        
+        # Initialize state - removed _user and _db from state
         initial_state = {
             "question": question,
             "user_id": user.id,
@@ -139,10 +146,6 @@ class LangGraphAgenticWorkflow:
             "confidence_score": 0.0,
             "sources": []
         }
-        
-        # Add user and db to state for access in nodes
-        initial_state["_user"] = user
-        initial_state["_db"] = db
         
         try:
             # Execute the workflow
@@ -199,6 +202,11 @@ class LangGraphAgenticWorkflow:
         3. Likely data sources needed (internal_docs, web_search, both)
         4. Estimated processing stages needed
 
+        Consider:
+        - Questions about "RAG", "retrieval", "AI evaluation" likely need internal docs
+        - Questions about current events, latest news need web search
+        - Technical questions about uploaded documents should prioritize internal search
+
         Respond with JSON:
         {{
             "complexity": 1-5,
@@ -223,11 +231,16 @@ class LangGraphAgenticWorkflow:
                 json_end = analysis_text.rfind("}") + 1
                 analysis = json.loads(analysis_text[json_start:json_end])
             else:
-                analysis = {"complexity": 3, "types": ["analytical"], "sources": ["both"], "stages": 2}
+                # Default to internal docs first for RAG-related questions
+                if any(term in state['question'].lower() for term in ['rag', 'retrieval', 'ai', 'evaluation', 'document', 'paper']):
+                    analysis = {"complexity": 2, "types": ["factual"], "sources": ["internal_docs"], "stages": 1}
+                else:
+                    analysis = {"complexity": 3, "types": ["analytical"], "sources": ["both"], "stages": 2}
             
         except Exception as e:
             logger.warning(f"Question analysis failed: {e}")
-            analysis = {"complexity": 3, "types": ["analytical"], "sources": ["both"], "stages": 2}
+            # Default to internal docs for most questions
+            analysis = {"complexity": 2, "types": ["factual"], "sources": ["internal_docs"], "stages": 1}
         
         # Update state
         state["current_stage"] = "analysis_complete"
@@ -256,11 +269,15 @@ class LangGraphAgenticWorkflow:
         timestamp = datetime.utcnow().isoformat()
         
         try:
+            # Use instance variables instead of state
+            if not self.current_user or not self.current_db:
+                raise ValueError("User or database not available for local search")
+            
             # Perform local search
             local_results = await self.search_service.search_documents(
                 query=state["question"],
-                user=state["_user"],
-                db=state["_db"],
+                user=self.current_user,
+                db=self.current_db,
                 limit=5
             )
             
@@ -296,6 +313,7 @@ class LangGraphAgenticWorkflow:
             
         except Exception as e:
             logger.error(f"Local search node failed: {e}")
+            state["local_results"] = []  # Ensure empty results
             state["reasoning_steps"].append({
                 "node": "local_search",
                 "stage": "retrieval",
@@ -315,10 +333,10 @@ class LangGraphAgenticWorkflow:
         local_count = len(state["local_results"])
         avg_similarity = sum(r["similarity"] for r in state["local_results"]) / local_count if local_count > 0 else 0
         
-        # Determine if local results are sufficient
+        # More lenient thresholds to prefer local results when available
         is_sufficient = (
-            local_count >= 3 and 
-            avg_similarity > 0.7
+            local_count >= 2 and 
+            avg_similarity > 0.6  # Lowered from 0.7 to 0.6
         )
         
         # Update state
@@ -333,7 +351,7 @@ class LangGraphAgenticWorkflow:
             "metrics": {
                 "result_count": local_count,
                 "avg_similarity": avg_similarity,
-                "sufficiency_threshold": 0.7
+                "sufficiency_threshold": 0.6
             },
             "timestamp": timestamp
         })
@@ -382,6 +400,7 @@ class LangGraphAgenticWorkflow:
             
         except Exception as e:
             logger.error(f"Web search node failed: {e}")
+            state["web_results"] = []  # Ensure empty results
             state["reasoning_steps"].append({
                 "node": "web_search",
                 "stage": "retrieval", 
@@ -429,7 +448,7 @@ class LangGraphAgenticWorkflow:
         
         timestamp = datetime.utcnow().isoformat()
         
-        # Build context from current results
+        # Build context from current results - prioritize local results
         context_parts = []
         
         if state["local_results"]:
@@ -515,7 +534,7 @@ class LangGraphAgenticWorkflow:
         
         timestamp = datetime.utcnow().isoformat()
         
-        # Build complete context
+        # Build complete context - prioritize local documents
         all_context = []
         
         if state["local_results"]:
@@ -548,7 +567,7 @@ class LangGraphAgenticWorkflow:
         Instructions:
         1. Synthesize all information into a comprehensive answer
         2. Cite sources clearly (internal documents vs web sources)
-        3. Demonstrate how the multi-stage LangGraph workflow provided better coverage
+        3. Prioritize internal document information when available
         4. Address any gaps or limitations found
         
         Final Answer:"""
@@ -605,14 +624,15 @@ class LangGraphAgenticWorkflow:
         
         if local_count == 0:
             return "web_search"  # No local results, need web search
-        elif local_count < 3:
-            return "web_search"  # Insufficient local results
-        else:
+        elif local_count >= 2:
+            # Check quality of local results
             avg_similarity = sum(r["similarity"] for r in state["local_results"]) / local_count
-            if avg_similarity < 0.7:
-                return "web_search"  # Low quality local results
-            else:
+            if avg_similarity >= 0.6:
                 return "generate"  # Good local results, generate answer
+            else:
+                return "web_search"  # Low quality, supplement with web
+        else:
+            return "web_search"  # Insufficient local results
     
     def _should_iterate(self, state: AgenticRAGState) -> str:
         """Decide whether to continue iterating or synthesize final answer"""
@@ -622,7 +642,7 @@ class LangGraphAgenticWorkflow:
         
         # Check if we have enough information
         total_sources = len(state["local_results"]) + len(state["web_results"])
-        if total_sources >= 5:
+        if total_sources >= 3:  # Lowered from 5 to 3
             return "synthesize"  # Have enough sources
         
         return "iterate"  # Continue iterating
@@ -658,9 +678,11 @@ class LangGraphAgenticWorkflow:
         
         base_confidence = 0.6
         
-        # Boost from multiple sources
-        total_sources = len(state["local_results"]) + len(state["web_results"])
-        source_boost = min(total_sources * 0.05, 0.2)
+        # Boost from local sources (preferred)
+        local_boost = len(state["local_results"]) * 0.08
+        
+        # Boost from web sources (secondary)
+        web_boost = len(state["web_results"]) * 0.05
         
         # Boost from hybrid sources
         hybrid_boost = 0.1 if (len(state["local_results"]) > 0 and len(state["web_results"]) > 0) else 0
@@ -668,14 +690,14 @@ class LangGraphAgenticWorkflow:
         # Boost from multiple iterations (thorough analysis)
         iteration_boost = min(state["iteration"] * 0.05, 0.15)
         
-        return min(base_confidence + source_boost + hybrid_boost + iteration_boost, 1.0)
+        return min(base_confidence + local_boost + web_boost + hybrid_boost + iteration_boost, 1.0)
     
     def _compile_sources(self, state: AgenticRAGState) -> List[Dict]:
-        """Compile all sources from local and web results"""
+        """Compile all sources from local and web results - prioritize local"""
         
         sources = []
         
-        # Add local sources
+        # Add local sources first
         for result in state["local_results"]:
             sources.append({
                 "type": "document",
@@ -685,7 +707,7 @@ class LangGraphAgenticWorkflow:
                 "text_preview": result["content"][:200] + "..."
             })
         
-        # Add web sources
+        # Add web sources after local
         for result in state["web_results"]:
             sources.append({
                 "type": "web",
