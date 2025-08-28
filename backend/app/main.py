@@ -11,8 +11,8 @@ from app.routers import users, documents, embeddings, search, rag
 app.models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="GenAI Research Assistant",
-    description="A RAG-powered AI research assistant",
+    title="AI Knowledge Analyst",
+    description="An Agentic RAG-Based Live Knowledge Analyst with hybrid retrieval and autonomous workflow coordination",
     version="1.0.0"
 )
 
@@ -27,7 +27,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "GenAI Research Assistant API", "status": "running"}
+    return {"message": "AI Knowledge Analyst API", "status": "running"}
 
 @app.get("/health")
 async def health_check():

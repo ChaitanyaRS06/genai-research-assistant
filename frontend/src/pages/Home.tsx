@@ -49,8 +49,8 @@ export default function Home() {
             </div>
             
             <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 mb-6">
-              GenAI Research
-              <span className="text-primary-600 block">Assistant</span>
+              AI Knowledge
+              <span className="text-primary-600 block">Analyst</span>
             </h1>
             
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">

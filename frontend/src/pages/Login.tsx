@@ -55,7 +55,7 @@ export default function Login() {
             Welcome back
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Sign in to your GenAI Research Assistant
+            Sign in to your AI Knowledge Analyst
           </p>
         </div>
 
