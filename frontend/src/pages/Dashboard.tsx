@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
-import { Upload, Search, FileText, Database, Brain, ArrowRight, CheckCircle, Clock, AlertCircle } from "lucide-react"
+import { Upload, FileText, Database, Brain, ArrowRight, CheckCircle, Clock, AlertCircle } from "lucide-react"
 
 type Document = {
   id: number

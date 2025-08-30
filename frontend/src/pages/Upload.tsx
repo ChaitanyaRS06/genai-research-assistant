@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { Upload as UploadIcon, FileText, CheckCircle, XCircle, Loader2, AlertCircle, ArrowRight } from "lucide-react"
+import { Upload as UploadIcon, FileText, CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react"
 
 type UploadStep = "upload" | "process" | "embed" | "complete"
 

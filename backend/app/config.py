@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     
+    # Web Search APIs
+    tavily_api_key: Optional[str] = os.getenv("TRAVILY_API_KEY")  # Match the .env variable name
+    serpapi_api_key: Optional[str] = os.getenv("SERPAPI_API_KEY")
+    
     # JWT
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "your-secret-key")
     jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")

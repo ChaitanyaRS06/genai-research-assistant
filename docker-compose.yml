@@ -26,10 +26,14 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://genai_user:genai_password@db:5432/genai_assistant
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - TRAVILY_API_KEY=${TRAVILY_API_KEY}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
     depends_on:
       db:
         condition: service_healthy

@@ -35,5 +35,9 @@ typing-extensions==4.12.2
 # HTTP client
 httpx==0.28.1
 
+# Web scraping
+beautifulsoup4==4.12.3
+lxml==5.2.1
+
 # Development (optional)
 pytest==8.3.4

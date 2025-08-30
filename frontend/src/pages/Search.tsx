@@ -4,7 +4,6 @@ import {
   Brain, 
   MessageSquare, 
   Loader2, 
-  CheckCircle, 
   Clock, 
   Search as SearchIcon, 
   FileText, 

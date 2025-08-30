@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Brain, Upload, Search, FileText, Zap, Shield, ArrowRight, CheckCircle } from "lucide-react"
+import { Brain, Upload, Search, FileText, Zap, ArrowRight, CheckCircle } from "lucide-react"
 
 export default function Home() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null

@@ -6,7 +6,8 @@
       "Bash(npx tailwindcss init:*)",
       "Bash(docker logs:*)",
       "Bash(docker-compose:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python test_web_search.py:*)"
     ],
     "deny": [],
     "ask": []

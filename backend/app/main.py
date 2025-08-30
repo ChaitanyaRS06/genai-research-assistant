@@ -5,7 +5,7 @@ from app.database import engine
 import app.models
 
 # Import routers
-from app.routers import users, documents, embeddings, search, rag
+from app.routers import users, documents, embeddings, search, rag, test_search
 
 # Create database tables
 app.models.Base.metadata.create_all(bind=engine)
@@ -42,3 +42,4 @@ app.include_router(documents.router)
 app.include_router(embeddings.router)
 app.include_router(search.router)
 app.include_router(rag.router)
+app.include_router(test_search.router)
